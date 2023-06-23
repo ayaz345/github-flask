@@ -58,7 +58,7 @@ class GitHubError(Exception):
             message = self.response.json()['message']
         except Exception:
             message = None
-        return "%s: %s" % (self.response.status_code, message)
+        return f"{self.response.status_code}: {message}"
 
     @property
     def response(self):
@@ -163,7 +163,7 @@ class GitHub(object):
         if state:
             params['state'] = state
 
-        url = self.auth_url + 'authorize?' + urlencode(params)
+        url = f'{self.auth_url}authorize?{urlencode(params)}'
         _logger.debug("Redirecting to %s", url)
         return redirect(url)
 
@@ -197,7 +197,7 @@ class GitHub(object):
             'client_id': self.client_id,
             'client_secret': self.client_secret
         }
-        url = self.auth_url + 'access_token'
+        url = f'{self.auth_url}access_token'
         _logger.debug("POSTing to %s", url)
         _logger.debug(params)
         response = self.session.post(url, data=params)
@@ -230,14 +230,12 @@ class GitHub(object):
             headers = kwargs.pop('headers')
         except KeyError:
             return {}
-        if headers is None:
-            return {}
-        return headers.copy()
+        return {} if headers is None else headers.copy()
 
     def _get_authorization_header(self, access_token):
         if access_token is None:
             access_token = self.get_access_token()
-        return 'token %s' % access_token
+        return f'token {access_token}'
 
     def _get_resource_url(self, resource):
         if resource.startswith(("http://", "https://")):
@@ -261,24 +259,23 @@ class GitHub(object):
         if not is_valid_response(response):
             raise GitHubError(response)
 
-        if is_json_response(response):
-            result = response.json()
-            while all_pages and response.links.get('next'):
-                url = response.links['next']['url']
-                response = self.raw_request(method, url, **kwargs)
-                if not is_valid_response(response) or \
-                        not is_json_response(response):
-                    raise GitHubError(response)
-                body = response.json()
-                if isinstance(body, list):
-                    result += body
-                elif isinstance(body, dict) and 'items' in body:
-                    result['items'] += body['items']
-                else:
-                    raise GitHubError(response)
-            return result
-        else:
+        if not is_json_response(response):
             return response
+        result = response.json()
+        while all_pages and response.links.get('next'):
+            url = response.links['next']['url']
+            response = self.raw_request(method, url, **kwargs)
+            if not is_valid_response(response) or \
+                        not is_json_response(response):
+                raise GitHubError(response)
+            body = response.json()
+            if isinstance(body, list):
+                result += body
+            elif isinstance(body, dict) and 'items' in body:
+                result['items'] += body['items']
+            else:
+                raise GitHubError(response)
+        return result
 
     def get(self, resource, params=None, **kwargs):
         """Shortcut for ``request('GET', resource)``."""

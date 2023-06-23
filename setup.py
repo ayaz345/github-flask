@@ -25,8 +25,7 @@ def read(*fname):
 
 def get_version():
     for line in read('flask_github.py').splitlines():
-        m = re.match(r"__version__\s*=\s'(.*)'", line)
-        if m:
+        if m := re.match(r"__version__\s*=\s'(.*)'", line):
             return m.groups()[0].strip()
     raise Exception('Cannot find version')
 
